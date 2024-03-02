@@ -1,0 +1,108 @@
+{{- if .Values.frontend.ingress.enabled -}}
+{{- $fullName := include "zex-app.frontend.fullname" . -}}
+{{- $extraPaths := .Values.frontend.ingress.extraPaths -}}
+{{- $httpSvcPort := .Values.frontend.service.http.port -}}
+{{- $paths := .Values.frontend.ingress.paths -}}
+{{- $pathType := .Values.frontend.ingress.pathType -}}
+{{- if and .Values.frontend.ingress.ingressClassName (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
+  {{- if not (hasKey .Values.frontend.ingress.annotations "kubernetes.io/ingress.class") }}
+  {{- $_ := set .Values.frontend.ingress.annotations "kubernetes.io/ingress.class" .Values.frontend.ingress.ingressClassName}}
+  {{- end }}
+{{- end }}
+{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: networking.k8s.io/v1
+{{- else if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: networking.k8s.io/v1beta1
+{{- else -}}
+apiVersion: extensions/v1beta1
+{{- end }}
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "zex-app.labels" (dict "context" . "component" .Values.frontend.name "name" .Values.frontend.name) | nindent 4 }}
+    {{- if .Values.frontend.ingress.labels }}
+    {{- toYaml .Values.frontend.ingress.labels | nindent 4 }}
+    {{- end }}
+  {{- with .Values.frontend.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if and .Values.frontend.ingress.ingressClassName (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
+  ingressClassName: {{ .Values.frontend.ingress.ingressClassName }}
+  {{- end }}
+  {{- if .Values.frontend.ingress.tls }}
+  tls:
+    {{- range .Values.frontend.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+  {{- if .Values.frontend.ingress.hosts }}
+    {{- range $host := .Values.frontend.ingress.hosts }}
+    - host: {{ $host | quote }}
+      http:
+        paths:
+          {{- if $extraPaths }}
+            {{- toYaml $extraPaths | nindent 10 }}
+          {{- end }}
+          {{- range $p := $paths }}
+          - path: {{ $p }}
+            {{- if and $pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
+            pathType: {{ $pathType }}
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
+              service:
+                name: {{ $fullName }}
+                port:
+                  {{- if kindIs "float64" $httpSvcPort }}
+                  number: {{ $httpSvcPort }}
+                  {{- else }}
+                  name: {{ .Values.frontend.service.http.name }}
+                  {{- end }}
+              {{- else }}
+              serviceName: {{ $fullName }}
+              servicePort: {{ .Values.frontend.service.http.port }}
+              {{- end }}
+          {{- end }}
+    {{- end }}
+    {{- else }}
+    - host: "app.local"
+      http:
+        paths:
+          - backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
+              service:
+                name: {{ $fullName }}
+                port:
+                  number: 80
+              {{- else }}
+              serviceName: {{ $fullName }}
+              servicePort: 80
+              {{- end }}
+            path: /
+            {{- if and $pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
+            pathType: {{ $pathType }}
+            {{- end }}
+          - backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
+              service:
+                name: {{ $fullName }}
+                port:
+                  number: 443
+              {{- else }}
+              serviceName: {{ $fullName }}
+              servicePort: 443
+              {{- end }}
+            path: /
+            {{- if and $pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
+            pathType: {{ $pathType }}
+            {{- end }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,144 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zex-app.backend.fullname" . }}
+  labels:
+    {{- include "zex-app.labels" (dict "context" . "component" .Values.backend.name "name" .Values.backend.name) | nindent 4 }}
+    app.kubernetes.io/version: {{ .Values.backend.image.tag }}
+  namespace: {{ include "zex-app.namespace" (dict "name" .Values.backend.name "context" .) }}
+spec:
+  {{- if not .Values.backend.autoscaling.enabled }}
+  replicas: {{ .Values.backend.replicaCount }}
+  {{- end }}
+  {{- if .Values.backend.updateStrategy }}
+  strategy:
+    type: {{ .Values.backend.updateStrategy.type }}
+    {{- if eq .Values.backend.updateStrategy.type "RollingUpdate" }}
+    rollingUpdate:
+      {{- if .Values.backend.updateStrategy.maxUnavailable }}
+      maxUnavailable: {{ .Values.backend.updateStrategy.maxUnavailable }}
+      {{- end }}
+      {{- if .Values.backend.updateStrategy.maxSurge }}
+      maxSurge: {{ .Values.backend.updateStrategy.maxSurge }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "zex-app.selectorLabels" (dict "context" . "component" .Values.backend.name "name" .Values.backend.name) | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.backend.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "zex-app.labels" (dict "context" . "component" .Values.backend.name "name" .Values.backend.name) | nindent 8 }}
+        {{- with .Values.backend.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.backend.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "zex-app.backendServiceAccountName" . }}
+      {{- if .Values.backend.podSecurityContext }}
+      securityContext:
+        {{- toYaml .Values.backend.podSecurityContext | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: init-db
+          image: busybox
+          command: ['sh', '-c', 'echo -e "Checking for the availability of MySQL Server deployment"; while ! nc -z {{ include "zex-app.service.database" . }} {{ include "zex-app.databasePort" . }}; do sleep 1; printf "-"; done; echo -e "  >> MySQL DB Server has started";']
+      containers:
+        - name: {{ .Values.backend.name }}
+          {{- if .Values.backend.securityContext }}
+          securityContext:
+            {{- toYaml .Values.backend.securityContext | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag | default .Chart.AppVersion }}"
+          args:
+            - "-mode=backend"
+            {{- if .Values.backend.bootCommands}}
+            {{- range $cmd := .Values.backend.bootCommands }}
+            - {{ . | quote }}
+            {{- end }}
+            {{- end }}
+          env:
+            {{- if .Values.remoteDb.enabled }}
+            - name: DB_USER
+              value: {{ .Values.remoteDb.username }}
+            - name: DB_PASS
+              value: {{ .Values.remoteDb.password }}
+            - name: DB_NAME
+              value: {{ .Values.remoteDb.dbName }}
+            - name: DB_HOST
+              value: {{ .Values.remoteDb.host }}
+            {{- else if .Values.bitnamiMysql.enabled }}
+            - name: DB_USER
+              value: {{ .Values.mysql.auth.username }}
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mysql.primary.fullname" .Subcharts.mysql }}
+                  key: mysql-password
+            - name: DB_NAME
+              value: {{ .Values.mysql.auth.database }}
+            - name: DB_HOST
+              value: {{ include "mysql.primary.fullname" .Subcharts.mysql }}
+            {{- else }}
+            - name: DB_USER
+              value: {{ .Values.database.databaseUser }}
+            - name: DB_NAME
+              value: {{ .Values.database.databaseName }}
+            - name: DB_HOST
+              value: {{ include "zex-app.service.database" .}}
+            - name: NAMESPACE
+              value: {{ include "zex-app.namespace" (dict "name" "database" "context" .) }}
+            - name: SECRET_NAME
+              value: mysql-user-password
+            {{- end }}
+
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          ports:
+            - name: {{ .Values.backend.service.http.name | quote }}
+              containerPort: {{ .Values.backend.service.http.port }}
+              protocol: TCP
+            - name: {{ .Values.backend.service.https.name | quote }}
+              containerPort: {{ .Values.backend.service.https.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              port: {{ .Values.backend.service.http.name | quote }}
+              path: /api/v1/healthz
+            {{- toYaml .Values.backend.livenessProbe | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              port: {{ .Values.backend.service.http.name | quote }}
+              path: /api/v1/healthz
+            {{- toYaml .Values.backend.readinessProbe | nindent 12 }}
+          {{- if .Values.backend.resources }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          {{- end }}
+          {{- with .Values.backend.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.backend.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ template "zex-app.database.fullname" . }}
+  namespace: {{ template "zex-app.namespace" (dict "context" . "name" .Values.database.name) }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ template "zex-app.backendServiceAccountName" . }}
+    namespace: {{ template "zex-app.namespace" (dict "context" . "name" .Values.backend.name ) }}
+roleRef:
+  kind: ClusterRole
+  name: {{ template "zex-app.secretsReaderRoleName" . }}
+  apiGroup: rbac.authorization.k8s.io

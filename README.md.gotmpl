@@ -1,0 +1,124 @@
+# ZEX APP Helm Chart
+
+## Local deployment - prerequisites
+* [docker](https://www.docker.com/) v25.0.3+
+* [helm](https://helm.sh/) v.3.8.1+
+* [kind](https://kind.sigs.k8s.io/) v0.15.0+ or any other K8s local cluster.
+* [ingress-nginx](https://github.com/kubernetes/ingress-nginx) ingress controller.
+* [metrics-server](https://github.com/kubernetes-sigs/metrics-server)
+* [istio](https://istio.io/latest/docs/setup/getting-started/#download) service mesh.
+
+### Local setup scripts
+Check out the `scripts` folder for easy deployment of the prerequisites.
+Docker, helm and kind cli must be installed before running the scripts.
+
+Enter the `scripts` folder, and run the following scripts in order:
+* `kind-cluster.sh` - bash script deploys a kind cluster.
+* `ingress-controller.sh` - bash script for deploying the `ingress-nginx` ingress controller.
+* `metrics-server.sh` - bash script which installs metrics server needed for autoscaling.
+Feel free to tinker with the configuration files if needed.
+
+After these scripts, only `istio` service mesh needs to be installed manually via the `istio` cli tool `istioctl install --set profile=demo -y`
+
+## Chart install
+Use helm cli to install chart
+    `helm upgrade --install -n <your_namespace> --create-namespace <your_chart_name> <zex-app folder location>`
+For example:
+`helm upgrade --install -n zex --create-namespace zex-app .`
+
+Add `-f <your_yaml_variables_file>` to the `helm` command to customize charts variables.
+
+## Local DNS
+An A record needs to be added you your local DNS server od `hosts` file.
+By default, this will be `zex-app.local` pointing to `127.0.0.1`, but you can set your own domain with `ingress.hosts`.
+
+## Istio dashboard
+Install `addons` to be able to use istio dashboard. The `samples/addons` folder has been [downloaded](https://istio.io/latest/docs/setup/getting-started/#download)
+together with the `istio` cli tool.
+Run `kubectl apply -f <istio_folder/samples/addons>` and open the dashboard with `istioctl dashboard kiali`.
+
+## Running stress tests
+* Backend - `kubectl run -n zex-backend -i --tty load-generator --rm --image=busybox:1.28 --restart=Never -- /bin/sh -c "while sleep 0.01; do wget -q -O- http://zex-app-backend.zex-backend:8080/api/v1/title; done"`
+* Frontend - `kubectl run -n zex -i --tty load-generator --rm --image=busybox:1.28 --restart=Never -- /bin/sh -c "while sleep 0.01; do wget -q -O- http://zex-app-frontend:8080; done"`
+
+The `frontend` test will stress all components, as it needs the `backend` which needs the `database`.
+
+## Cleanup
+Just destroy your kind cluster with `kind destroy cluster` command.
+
+## Miscellaneous
+### Core App
+The `core-app` folder contains the small and very primitive `go` code base used for `frontend` and `backend`.
+It has been dockerized and published to docker hub where it is publicly available.
+The code is here just for reference.
+
+### Scripts
+As described above, `scripts` folder contains utility deployment scripts.
+
+### Helm Chart repo folders
+These extra folders `core-app` and `scripts` would not normally be a part of the Helm Chart repository.
+In this exceptional case, they are placed here just for convenience,
+but in reality they would probably have their own dedicated repositories.
+
+
+## Variables
+
+## General parameters
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+{{- range .Values }}
+  {{- if not (or  (hasPrefix "backend" .Key) (hasPrefix "frontend" .Key) (hasPrefix "database" .Key) (hasPrefix "bitnamiMysql" .Key) (hasPrefix "mysql" .Key) (hasPrefix "remoteDb" .Key) ) }}
+| {{ .Key }} | {{ .Type }} | {{ if .Default }}{{ .Default }}{{ else }}{{ .AutoDefault }}{{ end }} | {{ if .Description }}{{ .Description }}{{ else }}{{ .AutoDescription }}{{ end }} |
+  {{- end }}
+{{- end }}
+
+## Frontend
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+{{- range .Values }}
+  {{- if hasPrefix "frontend" .Key }}
+| {{ .Key }} | {{ .Type }} | {{ if .Default }}{{ .Default }}{{ else }}{{ .AutoDefault }}{{ end }} | {{ if .Description }}{{ .Description }}{{ else }}{{ .AutoDescription }}{{ end }} |
+  {{- end }}
+{{- end }}
+
+## Backend
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+{{- range .Values }}
+  {{- if hasPrefix "backend" .Key }}
+| {{ .Key }} | {{ .Type }} | {{ if .Default }}{{ .Default }}{{ else }}{{ .AutoDefault }}{{ end }} | {{ if .Description }}{{ .Description }}{{ else }}{{ .AutoDescription }}{{ end }} |
+  {{- end }}
+{{- end }}
+
+## Database
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+{{- range .Values }}
+  {{- if hasPrefix "database" .Key }}
+| {{ .Key }} | {{ .Type }} | {{ if .Default }}{{ .Default }}{{ else }}{{ .AutoDefault }}{{ end }} | {{ if .Description }}{{ .Description }}{{ else }}{{ .AutoDescription }}{{ end }} |
+  {{- end }}
+{{- end }}
+
+### Bitnami mysql
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+{{- range .Values }}
+  {{- if (or (hasPrefix "bitnamiMysql" .Key) (hasPrefix "mysql" .Key)) }}
+| {{ .Key }} | {{ .Type }} | {{ if .Default }}{{ .Default }}{{ else }}{{ .AutoDefault }}{{ end }} | {{ if .Description }}{{ .Description }}{{ else }}{{ .AutoDescription }}{{ end }} |
+  {{- end }}
+{{- end }}
+
+### Remotely hosted database
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+{{- range .Values }}
+  {{- if (or (hasPrefix "remoteDb" .Key)) }}
+| {{ .Key }} | {{ .Type }} | {{ if .Default }}{{ .Default }}{{ else }}{{ .AutoDefault }}{{ end }} | {{ if .Description }}{{ .Description }}{{ else }}{{ .AutoDescription }}{{ end }} |
+  {{- end }}
+{{- end }}

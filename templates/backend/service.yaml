@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  {{- if .Values.backend.service.annotations }}
+  annotations:
+  {{- range $key, $value := .Values.backend.service.annotations }}
+    {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  {{- end }}
+  name: {{ include "zex-app.backend.fullname" . }}
+  labels:
+    {{- include "zex-app.labels" (dict "context" . "component" .Values.backend.name "name" .Values.backend.name) | nindent 4 }}
+  namespace: {{ include "zex-app.namespace" (dict "name" .Values.backend.name "context" .) }}
+spec:
+  type: {{ .Values.backend.service.type }}
+  ports:
+    - port: {{ .Values.backend.service.http.port }}
+      targetPort: {{- if .Values.backend.service.namedTargetPort }} {{ .Values.backend.service.http.name }} {{- else }} {{ .Values.backend.service.http.port }} {{- end }}
+      protocol: TCP
+      name: {{ .Values.backend.service.http.name }}
+    - port: {{ .Values.backend.service.https.port }}
+      targetPort: {{- if .Values.backend.service.namedTargetPort }} {{ .Values.backend.service.https.name }} {{- else }} {{ .Values.backend.service.https.port }} {{- end }}
+      protocol: TCP
+      name: {{ .Values.backend.service.https.name }}
+  selector:
+    {{- include "zex-app.selectorLabels" (dict "context" . "component" .Values.backend.name "name" .Values.backend.name) | nindent 6 }}
+{{- if eq .Values.backend.service.type "LoadBalancer" }}
+  {{- if .Values.backend.service.externalIPs }}
+  externalIPs: {{ .Values.backend.service.externalIPs }}
+  {{- end }}
+  {{- if .Values.backend.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+  {{ toYaml .Values.backend.service.loadBalancerSourceRanges | indent 4 }}
+  {{- end }}
+{{- end -}}
+{{- with .Values.backend.service.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ . }}
+{{- end }}
+{{- with .Values.backend.service.sessionAffinity }}
+  sessionAffinity: {{ . }}
+{{- end }}

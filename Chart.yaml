@@ -1,0 +1,19 @@
+apiVersion: v2
+name: zex-app
+description: Helm chart for zex-app deployment
+version: 0.1.0
+appVersion: 0.1.0
+maintainers:
+  - name: ZeljkoBenovic
+    url: https://github.com/ZeljkoBenovic
+    email: benoviczeljko87@gmail.com
+keywords:
+  - zex
+  - app
+  - pure
+  - awesomeness
+#dependencies:
+#  - name: mysql
+#    version: 9.22.0
+#    repository: https://charts.bitnami.com/bitnami
+#    condition: bitnamiMysql.enabled

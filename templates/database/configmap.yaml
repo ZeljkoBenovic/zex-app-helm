@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "zex-app.database.fullname" . }}
+  labels:
+    {{- include "zex-app.labels" (dict "context" . "component" .Values.database.name "name" .Values.database.name) | nindent 4 }}
+  namespace: {{ include "zex-app.namespace" (dict "name" "database" "context" .) }}
+data:
+  my.cnf: |-
+  {{- tpl .Values.database.customConfig . | nindent 4 }}

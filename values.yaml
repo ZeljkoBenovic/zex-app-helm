@@ -1,0 +1,447 @@
+# -- Override kubernetes version
+kubeVersionOverride: ""
+
+global:
+  # -- Additional labels for all resources
+  additionalLabels: ""
+
+frontend:
+  # -- Additional boot commands
+  bootCommands: []
+  # -- Frontend component name
+  name: "frontend"
+  image:
+    # -- Frontend component container repository
+    repository: "zeljkoiphouse/zex-app"
+    # -- Frontend component pull policy
+    pullPolicy: IfNotPresent
+    # -- Frontend component image tag
+    tag: "latest"
+  autoscaling:
+    # -- Enable frontend component autoscaling
+    enabled: true
+    # -- Minimum number of frontend component replicas
+    minReplicas: 1
+    # -- Maximum number of frontend component replicas
+    maxReplicas: 10
+    # -- Frontend component target CPU percentage
+    targetCPUUtilizationPercentage: 80
+    # -- Frontend component target Memory utilization percentage
+    targetMemoryUtilizationPercentage: 80
+  # -- Frontend component number of replicas if autoscaling disabled
+  replicaCount: 1
+  # -- Frontend component pod annotations
+  podAnnotations: {}
+  # -- Frontend component pod labels
+  podLabels: {}
+  # -- Frontend component image pull secrets
+  imagePullSecrets: {}
+  # -- Frontend component pod security context
+  podSecurityContext: {}
+  # -- Frontend component security context
+  securityContext: {}
+  serviceAccount:
+    # -- Create a service account for the Frontend component
+    create: false
+    # --  A service account name override to use
+    serviceAccountName: ""
+    # -- The annotations for the created service account
+    annotations: { }
+    # -- Automount the service account API credentials
+    automountServiceAccountToken: true
+  service:
+    # -- Frontend component service annotations
+    annotations: {}
+    # -- Frontend component service labels
+    labels: {}
+    # -- Frontend component service type
+    type: NodePort
+    # -- Uses the target port name alias instead of the explicit port
+    namedTargetPort: true
+    # -- The load balancer IP to use, if service type is `LoadBalancer`
+    loadBalancerIP: ""
+    # -- The IP CIDR to whitelist, if service type is `LoadBalancer`
+    loadBalancerSourceRanges: [ ]
+    # -- The service external IPs
+    externalIPs: [ ]
+    # -- The service external traffic policy
+    externalTrafficPolicy: ""
+    # -- The session affinity. either `ClientIP` or `None`
+    sessionAffinity: ""
+    # -- Frontend component service ports
+    http:
+      # -- Frontend http service name
+      name: http
+      # -- Frontend http service port
+      port: 8080
+      # -- Frontend http service nodePort
+      nodePort: 8080
+    https:
+      # -- Frontend https service name
+      name: https
+      # -- Frontend https service port
+      port: 443
+      # -- Frontend https service nodePort
+      nodePort: 443
+  readinessProbe:
+    # -- Minimum consecutive failures for the [probe] to be considered failed after having succeeded
+    failureThreshold: 3
+    # -- Number of seconds after the container has started before [probe] is initiated
+    initialDelaySeconds: 10
+    # -- How often (in seconds) to perform the [probe]
+    periodSeconds: 10
+    # -- Minimum consecutive successes for the [probe] to be considered successful after having failed
+    successThreshold: 1
+    # -- Number of seconds after which the [probe] times out
+    timeoutSeconds: 1
+  livenessProbe:
+    # -- Minimum consecutive failures for the [probe] to be considered failed after having succeeded
+    failureThreshold: 3
+    # -- Number of seconds after the container has started before [probe] is initiated
+    initialDelaySeconds: 10
+    # -- How often (in seconds) to perform the [probe]
+    periodSeconds: 10
+    # -- Minimum consecutive successes for the [probe] to be considered successful after having failed
+    successThreshold: 1
+    # -- Number of seconds after which the [probe] times out
+    timeoutSeconds: 1
+  # -- Frontend component resources and limits
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "100m"
+    limits:
+      memory: "128Mi"
+      cpu: "300m"
+  # -- Frontend component volume mounts
+  volumeMounts: {}
+  # -- Frontend component volumes
+  volumes: {}
+  # -- Frontend component node selector
+  nodeSelector: {}
+  # -- Frontend component affinity
+  affinity: {}
+  # -- Frontend component tolerations
+  tolerations: {}
+  updateStrategy:
+    # -- Strategy type
+    type: RollingUpdate
+    # -- Max unavailable
+    maxUnavailable: 1
+    # -- Max surge
+    maxSurge: 1
+  ingress:
+    # -- Frontend component enable ingress
+    enabled: true
+    # -- The annotations for frontend component
+    annotations:
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+      nginx.ingress.kubernetes.io/proxy-body-size: 100m
+      nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    # -- The labels for frontend component
+    labels: { }
+    # -- The ingress class name
+    ingressClassName: "nginx"
+    # -- A list of ingress hosts
+    hosts:
+      - "zex-app.local"
+    # -- A list of ingress paths
+    paths:
+      - /
+    # -- The ingress path type
+    pathType: Prefix
+    # -- Extra ingress paths
+    extraPaths: [ ]
+    # -- A list of ingress TLS configuration
+    tls: [ ]
+
+backend:
+  # -- Additional boot commands
+  bootCommands: []
+  # -- The name of the backend component
+  name: "backend"
+  image:
+    # -- Container repo and name
+    repository: "zeljkoiphouse/zex-app"
+    # -- Container pull policy
+    pullPolicy: IfNotPresent
+    # -- Container version
+    tag: "latest"
+  autoscaling:
+    # -- Enable backend autoscaling
+    enabled: true
+    # -- Minimum number of replicas
+    minReplicas: 1
+    # -- Maximum number of replicas
+    maxReplicas: 10
+    # -- Target CPU percentage
+    targetCPUUtilizationPercentage: 80
+    # -- Target Memory utilization percentage
+    targetMemoryUtilizationPercentage: 80
+  # -- Backend component replica count when autoscaling is not enabled
+  replicaCount: 1
+ # -- Backend component pod annotations
+  podAnnotations: {}
+  # -- Backend component pod labels
+  podLabels: {}
+  # -- Backend component image pull secrets
+  imagePullSecrets: {}
+  serviceAccount:
+    # --  A service account name override to use
+    serviceAccountName: ""
+    # -- The annotations for the created service account
+    annotations: { }
+    # -- Automount the service account API credentials
+    automountServiceAccountToken: true
+  # -- Backend pod security context
+  podSecurityContext: {}
+  # -- Backend component container security context
+  securityContext: {}
+  service:
+    http:
+      # -- Backend http service name
+      name: http
+      # -- Backend http service port
+      port: 8080
+    https:
+      # -- Backend https service name
+      name: https
+      # -- Backend https service port
+      port: 8081
+    # -- Backend service annotations
+    annotations: {}
+    # -- Backend component service labels
+    labels: {}
+    # -- Backend component service type
+    type: ClusterIP
+    # -- Uses the target port name alias instead of the explicit port
+    namedTargetPort: true
+    # -- The load balancer IP to use, if service type is `LoadBalancer`
+    loadBalancerIP: ""
+    # -- The IP CIDR to whitelist, if service type is `LoadBalancer`
+    loadBalancerSourceRanges: [ ]
+    # -- The service external IPs
+    externalIPs: [ ]
+    # -- The service external traffic policy
+    externalTrafficPolicy: ""
+    # -- The session affinity. either `ClientIP` or `None`
+    sessionAffinity: ""
+  livenessProbe:
+    # -- Minimum consecutive failures for the [probe] to be considered failed after having succeeded
+    failureThreshold: 3
+    # -- Number of seconds after the container has started before [probe] is initiated
+    initialDelaySeconds: 10
+    # -- How often (in seconds) to perform the [probe]
+    periodSeconds: 10
+    # -- Minimum consecutive successes for the [probe] to be considered successful after having failed
+    successThreshold: 1
+    # -- Number of seconds after which the [probe] times out
+    timeoutSeconds: 1
+  readinessProbe:
+    # -- Minimum consecutive failures for the [probe] to be considered failed after having succeeded
+    failureThreshold: 3
+    # -- Number of seconds after the container has started before [probe] is initiated
+    initialDelaySeconds: 10
+    # -- How often (in seconds) to perform the [probe]
+    periodSeconds: 10
+    # -- Minimum consecutive successes for the [probe] to be considered successful after having failed
+    successThreshold: 1
+    # -- Number of seconds after which the [probe] times out
+    timeoutSeconds: 1
+  # -- Backend component resource requests and limits
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "250m"
+    limits:
+      memory: "128Mi"
+      cpu: "500m"
+  # -- Backend component volume mounts
+  volumeMounts: {}
+  # -- Backend component volumes
+  volumes: {}
+  # -- Backend component node selector
+  nodeSelector: {}
+  # -- Backend component node affinity
+  affinity: {}
+  # -- Backend node tolerations
+  tolerations: {}
+  updateStrategy:
+    # -- Update strategy type
+    type: RollingUpdate
+    # -- Max unavailable
+    maxUnavailable: 1
+    # -- Max surge
+    maxSurge: 1
+
+database:
+  # -- Enable local database
+  enabled: true
+  # -- The name of the database component
+  name: "database"
+  image:
+    # -- Container repo and name
+    repository: "mariadb"
+    # -- Container pull policy
+    pullPolicy: IfNotPresent
+    # -- Container version
+    tag: "latest"
+  # -- Database component number of replicas
+  replicaCount: 1
+  autoscaling:
+    # -- Enable autoscaling
+    enabled: false
+    # -- Maximum number of replicas
+    minReplicas: 1
+    # -- Minimum number of replicas
+    maxReplicas: 10
+    # -- Target CPU percentage
+    targetCPUUtilizationPercentage: 90
+    # -- Target Memory utilization percentage
+    targetMemoryUtilizationPercentage: 90
+  # -- Database component pod annotations
+  podAnnotations: {}
+  # -- Database component image pull secrets
+  imagePullSecrets: {}
+  serviceAccount:
+    # -- Create a service account for the database component
+    create: false
+    # --  A service account name override to use
+    serviceAccountName: ""
+    # -- The annotations for the created service account
+    annotations: {}
+    # -- Automount the service account API credentials
+    automountServiceAccountToken: true
+  # -- Database component pod security context
+  podSecurityContext: {}
+  # -- Database component security context
+  securityContext: {}
+  service:
+    # -- Database component service annotations
+    annotations: {}
+    # -- Database component service labels
+    labels: {}
+    # -- Database component service type
+    type: ClusterIP
+    # -- Uses the target port name alias instead of the explicit port
+    namedTargetPort: true
+    # -- The load balancer IP to use, if service type is `LoadBalancer`
+    loadBalancerIP: ""
+    # -- The IP CIDR to whitelist, if service type is `LoadBalancer`
+    loadBalancerSourceRanges: [ ]
+    # -- The service external IPs
+    externalIPs: [ ]
+    # -- The service external traffic policy
+    externalTrafficPolicy: ""
+    # -- The session affinity. either `ClientIP` or `None`
+    sessionAffinity: ""
+    mysql:
+      # -- Database component port name
+      name: mysql
+      # -- Database component port
+      port: 3306
+      # -- Database component nodePort
+      nodePort: 3306
+  livenessProbe:
+    # -- Minimum consecutive failures for the [probe] to be considered failed after having succeeded
+    failureThreshold: 3
+    # -- Number of seconds after the container has started before [probe] is initiated
+    initialDelaySeconds: 30
+    # -- How often (in seconds) to perform the [probe]
+    periodSeconds: 10
+    # -- Minimum consecutive successes for the [probe] to be considered successful after having failed
+    successThreshold: 1
+    # -- Number of seconds after which the [probe] times out
+    timeoutSeconds: 1
+  readinessProbe:
+    # -- Minimum consecutive failures for the [probe] to be considered failed after having succeeded
+    failureThreshold: 3
+    # -- Number of seconds after the container has started before [probe] is initiated
+    initialDelaySeconds: 30
+    # -- How often (in seconds) to perform the [probe]
+    periodSeconds: 10
+    # -- Minimum consecutive successes for the [probe] to be considered successful after having failed
+    successThreshold: 1
+    # -- Number of seconds after which the [probe] times out
+    timeoutSeconds: 1
+  # -- Database component resources and requests
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "500m"
+    limits:
+      memory: "256Mi"
+      cpu: "1000m"
+  # -- Database component volume mounts
+  volumeMounts: {}
+  # -- Database component volumes
+  volumes: {}
+  # -- Database component node selector
+  nodeSelector: {}
+  # -- Database component affinity
+  affinity: {}
+  # -- Database component tolerations
+  tolerations: {}
+  persistence:
+    # -- Enable database persistence
+    enabled: true
+    # -- Persistence disk size
+    storageSize: 10Gi
+    # -- Persistence access modes
+    accessModes:
+      - ReadWriteOnce
+    # -- Persistence storage class
+    storageClassName: ""
+    # -- Persistence selector
+    selector: {}
+    # -- Persistent volume claim retention policy
+    persistentVolumeClaimRetentionPolicy: {}
+  # -- Name of the database that will be created
+  databaseName: "zex-app"
+  # -- New database user
+  databaseUser: "zex-app"
+  # -- Custom config file
+  customConfig: |-
+    [mysqld] 
+    skip-name-resolve
+    explicit_defaults_for_timestamp
+    port={{ .Values.database.service.mysql.port }}
+    max_allowed_packet=16M
+    bind-address=*
+    slow_query_log=0
+    long_query_time=10.0
+
+    [client]
+    port={{ .Values.database.service.mysql.port }}
+
+    [manager]
+    port={{ .Values.database.service.mysql.port }}
+
+bitnamiMysql:
+  # -- Enable bitnami/mysql helm chart dependency as database backend
+  enabled: false
+
+mysql:
+  auth:
+    # -- Bitnami mysql database name
+    database: zex-app
+    # -- Bitnami mysql username
+    username: zex-app
+
+remoteDb:
+  # -- Enable remotely hosted database
+  enabled: false
+  # -- Remote database username
+  username: ""
+  # -- Remote database password
+  password: ""
+  # -- Remote database host
+  host: ""
+  # -- Remote database port
+  port : ""
+  # -- Remote database name
+  dbName: ""
+

@@ -1,0 +1,39 @@
+{{- if .Values.database.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  {{- if .Values.database.service.annotations }}
+  annotations:
+  {{- range $key, $value := .Values.database.service.annotations }}
+    {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  {{- end }}
+  name: {{ include "zex-app.database.fullname" . }}
+  labels:
+    {{- include "zex-app.labels" (dict "context" . "component" .Values.database.name "name" .Values.database.name) | nindent 4 }}
+  namespace: {{ include "zex-app.namespace" (dict "name" "database" "context" .) }}
+spec:
+  type: {{ .Values.database.service.type }}
+  ports:
+    - port: {{ .Values.database.service.mysql.port }}
+      targetPort: {{- if .Values.database.service.namedTargetPort }} {{ .Values.database.service.mysql.name }} {{- else }} {{ .Values.database.service.mysql.port }} {{- end }}
+      protocol: TCP
+      name: {{ .Values.database.service.mysql.name }}
+  selector:
+    {{- include "zex-app.selectorLabels" (dict "context" . "component" .Values.database.name "name" .Values.database.name) | nindent 6 }}
+{{- if eq .Values.database.service.type "LoadBalancer" }}
+  {{- if .Values.database.service.externalIPs }}
+  externalIPs: {{ .Values.database.service.externalIPs }}
+  {{- end }}
+  {{- if .Values.database.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+  {{ toYaml .Values.database.service.loadBalancerSourceRanges | indent 4 }}
+  {{- end }}
+{{- end -}}
+{{- with .Values.database.service.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ . }}
+{{- end }}
+{{- with .Values.database.service.sessionAffinity }}
+  sessionAffinity: {{ . }}
+{{- end }}
+{{- end }}

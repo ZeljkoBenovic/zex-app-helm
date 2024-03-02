@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zex-app.frontend.fullname" . }}
+  labels:
+    {{- include "zex-app.labels" (dict "context" . "component" .Values.frontend.name "name" .Values.frontend.name) | nindent 4 }}
+    app.kubernetes.io/version: {{ .Values.frontend.image.tag }}
+spec:
+  {{- if not .Values.frontend.autoscaling.enabled }}
+  replicas: {{ .Values.frontend.replicaCount }}
+  {{- end }}
+  {{- if .Values.frontend.updateStrategy }}
+  strategy:
+    type: {{ .Values.frontend.updateStrategy.type }}
+    {{- if eq .Values.frontend.updateStrategy.type "RollingUpdate" }}
+    rollingUpdate:
+      {{- if .Values.frontend.updateStrategy.maxUnavailable }}
+      maxUnavailable: {{ .Values.frontend.updateStrategy.maxUnavailable }}
+      {{- end }}
+      {{- if .Values.frontend.updateStrategy.maxSurge }}
+      maxSurge: {{ .Values.frontend.updateStrategy.maxSurge }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "zex-app.selectorLabels" (dict "context" . "component" .Values.frontend.name "name" .Values.frontend.name) | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.frontend.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "zex-app.labels" (dict "context" . "component" .Values.frontend.name "name" .Values.frontend.name) | nindent 8 }}
+        {{- with .Values.frontend.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.frontend.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.frontend.serviceAccount.create }}
+      serviceAccountName: {{ include "zex-app.frontendServiceAccountName" . }}
+      {{- end }}
+      {{- if .Values.frontend.podSecurityContext }}
+      securityContext:
+        {{- toYaml .Values.frontend.podSecurityContext | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Values.frontend.name }}
+          {{- if .Values.frontend.securityContext }}
+          securityContext:
+            {{- toYaml .Values.frontend.securityContext | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default .Chart.AppVersion }}"
+          args:
+            - "-mode=frontend"
+            {{- if .Values.frontend.bootCommands}}
+            {{- range $cmd := .Values.frontend.bootCommands }}
+            - {{ . | quote }}
+            {{- end }}
+            {{- end }}
+          env:
+            - name: BE_URL
+              value: {{ printf "http://%s:%s/api/v1" (include "zex-app.service.backend" .) (.Values.backend.service.http.port | toString) }}
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          ports:
+            - name: {{ .Values.frontend.service.http.name | quote }}
+              containerPort: {{ .Values.frontend.service.http.port }}
+              protocol: TCP
+            - name: {{ .Values.frontend.service.https.name | quote }}
+              containerPort: {{ .Values.frontend.service.https.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              port: {{ .Values.frontend.service.http.name | quote }}
+              path: /healthz
+            {{- toYaml .Values.frontend.livenessProbe | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              port: {{ .Values.frontend.service.http.name | quote }}
+              path: /healthz
+            {{- toYaml .Values.frontend.readinessProbe | nindent 12 }}
+          {{- if .Values.frontend.resources }}
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
+          {{- end }}
+          {{- with .Values.frontend.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.frontend.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
